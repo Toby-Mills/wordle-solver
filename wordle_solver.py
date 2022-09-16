@@ -167,32 +167,34 @@ def list_posible_words(all_words:pandas.DataFrame, game_state:pandas.DataFrame):
         guess = row[1]
         for position in [1, 2, 3, 4, 5]:
             column_name = 'letter_' + str(position)
-            value = guess[position - 1].strip()
-            letter = value[1:2]
-            result = value[0:1]
-            match(result):
-                case '+':
-                    mask = possible_words[column_name] == letter
+            value = guess[position - 1]
+            if isinstance(value, str):
+                value = value.strip()
+                letter = value[1:2]
+                result = value[0:1]
+                match(result):
+                    case '+':
+                        mask = possible_words[column_name] == letter
+                        possible_words = possible_words[mask]
+                    case '~':
+                        mask = possible_words[column_name] == letter
+                        possible_words = possible_words[~mask]
+                    case '-':
+                        mask = possible_words[column_name] == letter
+                        possible_words = possible_words[~mask]
+
+                positive_hits = count_positive_hits(guess, letter)
+                negative_hits = count_negative_hits(guess, letter)
+
+                if positive_hits > 0:
+                    if negative_hits > 0:
+                        mask = (possible_words['word'].str.count(letter) == positive_hits)
+                    else:
+                        mask = possible_words['word'].str.count(letter) >= positive_hits
                     possible_words = possible_words[mask]
-                case '~':
-                    mask = possible_words[column_name] == letter
-                    possible_words = possible_words[~mask]
-                case '-':
-                    mask = possible_words[column_name] == letter
-                    possible_words = possible_words[~mask]
-
-            positive_hits = count_positive_hits(guess, letter)
-            negative_hits = count_negative_hits(guess, letter)
-
-            if positive_hits > 0:
-                if negative_hits > 0:
-                    mask = (possible_words['word'].str.count(letter) == positive_hits)
                 else:
-                    mask = possible_words['word'].str.count(letter) >= positive_hits
-                possible_words = possible_words[mask]
-            else:
-                mask = possible_words['word'].str.contains(letter)
-                possible_words = possible_words[~mask]
+                    mask = possible_words['word'].str.contains(letter)
+                    possible_words = possible_words[~mask]
 
     return possible_words
 
@@ -237,10 +239,9 @@ def add_partial_match_operators(game_state:pandas.DataFrame):
 
 def add_partial_match_operator(result:string):
     '''prefixes the '~' operator to a result string that has no operator'''
-    if len(result) == 1:
+    if isinstance(result, str) and len(result) == 1:
         return '~' + result
-    else:
-        return result
+    return result
 
 def list_unsolved_positions(game_state:pandas.DataFrame):
     '''return a list of positions that have not yet been solved'''
@@ -249,13 +250,17 @@ def list_unsolved_positions(game_state:pandas.DataFrame):
     if guess_count > 0:
         last_guess = game_state.iloc[guess_count-1]
         for position in [1, 2, 3, 4, 5]:
-            value = last_guess[position - 1].strip()
-            result = value[0:1]
-            match(result):
-                case '+':
-                    pass
-                case _:
-                    positions.append(position)
+            value = last_guess[position - 1]
+            if isinstance(value, str):
+                value = value.strip()
+                result = value[0:1]
+                match(result):
+                    case '+':
+                        pass
+                    case _:
+                        positions.append(position)
+            else:
+                positions.append(position)
         return positions
     else:
         return [1, 2, 3, 4, 5]
@@ -275,7 +280,6 @@ def make_guess(all_valid_guesses:pandas.DataFrame, all_valid_answers:pandas.Data
     all_valid_guesses = add_unique_letter_count(all_valid_guesses, remaining_positions)
     remaining_guesses = list_posible_words(all_valid_guesses, game_state)
 
-    all_valid_answers = pandas.read_csv('All Valid Answers.csv',names=['word'])
     all_valid_answers = split_words_into_letters(all_valid_answers)
     remaining_answers = list_posible_words(all_valid_answers, game_state)
 

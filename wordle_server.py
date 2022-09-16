@@ -6,7 +6,7 @@ import pandas
 import wordle_solver as ws
 
 def update_game_state(game_state: pandas.DataFrame, guess:string, answer:string):
-    '''update the suppliced game_state with a new row for the result of the new guess'''
+    '''update the supplied game_state with a new row for the result of the new guess'''
     new_row = []
     result = ['','','','','']
 
